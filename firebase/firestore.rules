@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    match /seats/{seat} {
+    	allow read: if true;
+      allow write: if false;
+    }
+    
+    match /member-seats/{seat} {
+    	allow read: if true;
+    	allow write: if false;
+    }
+    
+    match /config/{doc} {
+    	allow read: if true;
+      allow write: if false;
+    }
+
+    match /menu/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    match /work-name-trend/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
