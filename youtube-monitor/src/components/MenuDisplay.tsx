@@ -1,15 +1,7 @@
-import { initializeApp } from 'firebase/app'
-import {
-	collection,
-	getFirestore,
-	onSnapshot,
-	orderBy,
-	query,
-} from 'firebase/firestore'
 import { useTranslation } from 'next-i18next'
-import { type FC, useEffect, useMemo, useState, useCallback } from 'react'
+import { type FC, useEffect, useState, useCallback } from 'react'
 import { useInterval } from '../lib/common'
-import { firestoreMenuConverter, getFirebaseConfig } from '../lib/firestore'
+import { getMenus } from '../lib/supabase'
 import * as styles from '../styles/Menu.styles'
 import { componentBackground, componentStyle } from '../styles/common.style'
 import type { Menu } from '../types/api'
@@ -34,34 +26,17 @@ const MenuDisplay: FC = () => {
 
 	const { t } = useTranslation()
 
-	const app = initializeApp(getFirebaseConfig())
-	const db = getFirestore(app)
-
 	const [latestMenuItems, setLatestMenuItems] = useState<Menu[]>([])
 	const [menuBoxList, setMenuBoxList] = useState<MenuBoxProps[]>([])
 	const [pageIndex, setPageIndex] = useState<number>(0)
-	const menuConverter = firestoreMenuConverter
 
-	const menuQuery = useMemo(
-		() =>
-			query(collection(db, 'menu'), orderBy('code', 'asc')).withConverter(
-				menuConverter,
-			),
-		[db, menuConverter],
-	)
 	useEffect(() => {
-		const unsubscribe = onSnapshot(menuQuery, (querySnapshot) => {
-			const menuItems: Menu[] = []
-			for (const doc of querySnapshot.docs) {
-				menuItems.push(doc.data())
-			}
+		const fetchMenus = async () => {
+			const menuItems = await getMenus()
 			setLatestMenuItems(menuItems)
-		})
-
-		return () => {
-			unsubscribe()
 		}
-	}, [menuQuery])
+		fetchMenus()
+	}, [])
 
 	const updateMenuItems = useCallback(async () => {
 		const menuItemAndImages = await Promise.all(

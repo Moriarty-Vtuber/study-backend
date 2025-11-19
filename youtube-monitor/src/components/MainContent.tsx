@@ -1,4 +1,5 @@
 import { type FC, useEffect, useMemo, useState } from 'react'
+import AuthButtons from './AuthButtons'
 import api from '../lib/api-config'
 import fetcher from '../lib/fetcher'
 import {
@@ -18,25 +19,14 @@ import Message from './Message'
 import TickerBoard from './TickerBoard'
 import SeatsPage, { type LayoutPageProps } from './SeatsPage'
 
-import { initializeApp } from 'firebase/app'
-import {
-	collection,
-	doc,
-	getFirestore,
-	onSnapshot,
-	query,
-	Timestamp,
-} from 'firebase/firestore'
 import { useRouter } from 'next/router'
 import { numSeatsOfRoomLayouts, useInterval } from '../lib/common'
 import { Constants } from '../lib/constants'
 import {
-	type SystemConstants,
-	firestoreConstantsConverter,
-	firestoreSeatConverter,
-	firestoreWorkNameTrendConverter,
-	getFirebaseConfig,
-} from '../lib/firestore'
+	getSystemConstants,
+	getSeats,
+	getWorkNameTrends,
+} from '../lib/supabase'
 
 const PAGING_INTERVAL_MSEC = Constants.pagingIntervalSeconds * 1000
 
@@ -56,20 +46,42 @@ const Seats: FC = () => {
 		useState<boolean>(false)
 	const [latestFixedMaxSeatsEnabled, setLatestFixedMaxSeatsEnabled] =
 		useState<boolean>()
-	const [latestWorkNameTrend, setLatestWorkNameTrend] = useState<WorkNameTrend>(
-		{
-			ranking: [],
-			ranked_at: Timestamp.now(),
-		},
-	)
+	const [latestWorkNameTrend, setLatestWorkNameTrend] = useState<WorkNameTrend>({
+		ranking: [],
+		ranked_at: new Date(),
+	})
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: initFirestore は初期化時のみ呼びたい意図的な設計
 	useEffect(() => {
 		if (process.env.NEXT_PUBLIC_API_KEY === undefined) {
 			alert('NEXT_PUBLIC_API_KEY is not defined')
 		}
 
-		initFirestore()
+		const fetchData = async () => {
+			const [
+				systemConstants,
+				seats,
+				memberSeats,
+				workNameTrends,
+			] = await Promise.all([
+				getSystemConstants(),
+				getSeats(),
+				getSeats(), // Assuming member seats are also fetched from the 'Seat' table for now
+				getWorkNameTrends(),
+			])
+
+			setLatestGeneralMaxSeats(systemConstants.max_seats)
+			setLatestMemberMaxSeats(systemConstants.member_max_seats)
+			setLatestMinVacancyRate(systemConstants.min_vacancy_rate)
+			setLatestYoutubeMembershipEnabled(systemConstants.youtube_membership_enabled)
+			setLatestFixedMaxSeatsEnabled(systemConstants.fixed_max_seats_enabled)
+			setLatestGeneralSeats(seats)
+			setLatestMemberSeats(memberSeats)
+			if (workNameTrends.length > 0) {
+				setLatestWorkNameTrend(workNameTrends[0])
+			}
+		}
+
+		fetchData()
 	}, [])
 
 	useInterval(() => {
@@ -150,71 +162,6 @@ const Seats: FC = () => {
 				setCurrentPageIndex(newPageIndex)
 			}
 		}
-	}
-
-	const initFirestore = () => {
-		const app = initializeApp(getFirebaseConfig())
-		const db = getFirestore(app)
-
-		const constantsConverter = firestoreConstantsConverter
-		const seatConverter = firestoreSeatConverter
-		const workNameTrendConverter = firestoreWorkNameTrendConverter
-
-		const generalSeatsQuery = query(collection(db, 'seats')).withConverter(
-			seatConverter,
-		)
-		onSnapshot(generalSeatsQuery, (querySnapshot) => {
-			const seats: Seat[] = []
-			for (const doc of querySnapshot.docs) {
-				seats.push(doc.data())
-			}
-			setLatestGeneralSeats(seats)
-		})
-		const memberSeatsQuery = query(
-			collection(db, 'member-seats'),
-		).withConverter(seatConverter)
-		onSnapshot(memberSeatsQuery, (querySnapshot) => {
-			const seats: Seat[] = []
-			for (const doc of querySnapshot.docs) {
-				seats.push(doc.data())
-			}
-			setLatestMemberSeats(seats)
-		})
-
-		const workNameTrendQuery = query(
-			collection(db, 'work-name-trend'),
-		).withConverter(workNameTrendConverter)
-		onSnapshot(workNameTrendQuery, (querySnapshot) => {
-			const workNameTrend: WorkNameTrend[] = []
-			for (const doc of querySnapshot.docs) {
-				workNameTrend.push(doc.data())
-			}
-			if (workNameTrend.length === 1) {
-				setLatestWorkNameTrend(workNameTrend[0])
-			} else if (workNameTrend.length > 1) {
-				throw new Error(
-					`Found ${workNameTrend.length} work name trend documents in Firestore, but only one is expected. This may cause incorrect application behavior. Please ensure that only one document exists in the 'work-name-trend' collection.`,
-				)
-			}
-		})
-
-		onSnapshot(
-			doc(db, 'config', 'constants').withConverter(constantsConverter),
-			(doc) => {
-				const generalMaxSeats = (doc.data() as SystemConstants).max_seats
-				const memberMaxSeats = (doc.data() as SystemConstants).member_max_seats
-				const minVacancyRate = (doc.data() as SystemConstants).min_vacancy_rate
-				const youtubeMembershipEnabled = (doc.data() as SystemConstants)
-					.youtube_membership_enabled
-				const fixedMaxSeatsEnabled = (doc.data() as SystemConstants)
-					.fixed_max_seats_enabled
-				setLatestGeneralMaxSeats(generalMaxSeats)
-				setLatestMemberMaxSeats(memberMaxSeats)
-				setLatestMinVacancyRate(minVacancyRate)
-				setLatestYoutubeMembershipEnabled(youtubeMembershipEnabled)
-				setLatestFixedMaxSeatsEnabled(fixedMaxSeatsEnabled)
-			},
-		)
 	}
 
 	/**
@@ -528,6 +475,7 @@ const Seats: FC = () => {
 		return (
 			<>
 				<div css={mainContent}>
+					<AuthButtons />
 					{layoutPagesMemo}
 					{messageMemo}
 					{tickerMemo}
