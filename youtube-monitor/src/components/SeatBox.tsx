@@ -2,6 +2,7 @@
 import { css, keyframes } from '@emotion/react'
 import Image from 'next/image'
 import type { FC } from 'react'
+import { useSession } from 'next-auth/react'
 import { fontFamily, validateString } from '../lib/common'
 import { Constants } from '../lib/constants'
 import * as styles from '../styles/SeatBox.styles'
@@ -34,6 +35,7 @@ export type SeatProps = {
 }
 
 const SeatBox: FC<SeatProps> = (props) => {
+	const { data: session } = useSession()
 	const workName = props.isUsed ? props.processingSeat.work_name : ''
 	const breakWorkName = props.isUsed ? props.processingSeat.break_work_name : ''
 	const seatColor = props.isUsed
@@ -42,9 +44,12 @@ const SeatBox: FC<SeatProps> = (props) => {
 	const isBreak = props.isUsed && props.processingSeat.state === SeatState.Break
 	const menuCode = props.isUsed ? props.processingSeat.menu_code : ''
 	const numStars = props.isUsed ? props.processingSeat.appearance.num_stars : 0
-	const profileImageUrl = props.isUsed
-		? props.processingSeat.user_profile_image_url
-		: ''
+	const profileImageUrl =
+		props.isUsed && session?.user?.image
+			? session.user.image
+			: props.isUsed
+				? props.processingSeat.user_profile_image_url
+				: ''
 
 	const colorGradientEnabled =
 		props.isUsed && props.processingSeat.appearance.color_gradient_enabled
@@ -78,7 +83,12 @@ const SeatBox: FC<SeatProps> = (props) => {
               box-shadow: none;
           `
 
-	const displayName = props.isUsed ? props.processingSeat.user_display_name : ''
+	const displayName =
+		props.isUsed && session?.user?.name
+			? session.user.name
+			: props.isUsed
+				? props.processingSeat.user_display_name
+				: ''
 
 	let seatNo = <></>
 	let userDisplayName = <></>
