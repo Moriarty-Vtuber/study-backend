@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Study Space</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: transparent; }
+        #room { 
+            width: 1920px; height: 1080px; 
+            /* background: url('https://your-background-image-url.com/bg.png') no-repeat center; */
+            position: relative;
+        }
+        .avatar {
+            position: absolute; width: 64px; height: 64px; border-radius: 50%;
+            border: 3px solid white; transition: all 0.5s;
+        }
+    </style>
+</head>
+<body>
+    <div id="room"></div>
+    <script>
+        async function updateRoom() {
+            try {
+                const res = await fetch('/api/room');
+                const data = await res.json();
+                const roomDiv = document.getElementById('room');
+                
+                // Simple diffing could be better, but clearing is easiest for now
+                roomDiv.innerHTML = ''; 
+                
+                if (data.users) {
+                    data.users.forEach((user, index) => {
+                        const img = document.createElement('img');
+                        img.src = user.profile_image_url;
+                        img.className = 'avatar';
+                        // Calculate position based on index (example grid)
+                        // 5 columns
+                        const col = index % 5;
+                        const row = Math.floor(index / 5);
+                        
+                        img.style.left = (100 + col * 100) + 'px';
+                        img.style.top = (100 + row * 100) + 'px';
+                        roomDiv.appendChild(img);
+                    });
+                }
+            } catch (e) {
+                console.error("Error fetching room:", e);
+            }
+        }
+        setInterval(updateRoom, 3000); // Update every 3 seconds
+        updateRoom();
+    </script>
+</body>
+</html>

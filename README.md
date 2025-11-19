@@ -1,19 +1,62 @@
-# youtube-study-space
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fsorarideblog%2Fyoutube-study-space.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fsorarideblog%2Fyoutube-study-space?ref=badge_shield)
+# My Study Space (Go + Supabase + Render)
 
+This is a migration of the Study Space bot to a robust Go backend hosted on Render with a Supabase database.
 
-Go to [YouTube channel](https://www.youtube.com/channel/UCXuD2XmPTdpVy7zmwbFVZWg)
+## Setup Instructions
 
-## Overview
+### 1. Supabase (Database)
+1. Create a free project at [Supabase](https://supabase.com).
+2. Go to **Project Settings > Database** and copy the **Connection String (URI)**.
+3. Go to the **SQL Editor** and run the following SQL to create the tables:
 
-Online study room, live-streamed on YouTube 24/7!
-The world's first fully automated online entry/exit system (unlimited number of people) using YouTube live streaming & chat (24 hours) .
+```sql
+-- Users table
+CREATE TABLE users (
+    id TEXT PRIMARY KEY, -- YouTube Channel ID
+    name TEXT NOT NULL,
+    display_name TEXT,
+    profile_image_url TEXT,
+    total_study_time BIGINT DEFAULT 0, -- In seconds
+    last_entered_at TIMESTAMP WITH TIME ZONE
+);
 
-Viewers can freely enter and exit the room by sending simple commands in the live chat.
+-- Current Room State
+CREATE TABLE room_state (
+    user_id TEXT PRIMARY KEY REFERENCES users(id),
+    seat_id INT, -- 1 to N
+    entered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    status TEXT DEFAULT 'studying' -- 'studying', 'break'
+);
+```
 
-Despite the title "study space," various tasks other than studying (walking, yoga, napping, meditation, games, cleaning, etc.) can be done here.
+### 2. Google Cloud (YouTube API)
+1. Create a project in Google Cloud Console.
+2. Enable **YouTube Data API v3**.
+3. Create an **API Key**.
 
-## Licenses & Attributions
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fsorarideblog%2Fyoutube-study-space.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fsorarideblog%2Fyoutube-study-space?ref=badge_large)
+### 3. Local Development
+1. Install Go 1.21+.
+2. Run `go mod tidy` to install dependencies.
+3. Set environment variables:
+   - `DATABASE_URL`: Your Supabase connection string.
+   - `YOUTUBE_API_KEY`: Your Google Cloud API Key.
+   - `VIDEO_ID`: The ID of your active live stream.
+4. Run the server:
+   ```bash
+   go run cmd/server/main.go
+   ```
 
-This project utilizes code from various open-source projects. The full list of software attributions is available in [ATTRIBUTIONS.md](./ATTRIBUTIONS.md).
+### 4. Deployment (Render)
+1. Push this repository to GitHub.
+2. Create a new **Web Service** on Render.
+3. Connect your repo.
+4. Set Environment Variables in Render:
+   - `DATABASE_URL`
+   - `YOUTUBE_API_KEY`
+   - `VIDEO_ID`
+5. Deploy!
+
+### 5. OBS Overlay
+- Add a **Browser Source** in OBS.
+- URL: `https://your-app-name.onrender.com/overlay/index.html`
+- Width: 1920, Height: 1080.

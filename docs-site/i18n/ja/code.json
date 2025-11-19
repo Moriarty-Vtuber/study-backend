@@ -1,6 +1,0 @@
-{
-	"theme.admonition.warning": {
-		"message": "注意",
-		"description": "The default label used for the Warning admonition (:::warning)"
-	}
-}
