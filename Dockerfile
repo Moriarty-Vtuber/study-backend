@@ -1,14 +1,9 @@
-FROM golang:1.21-alpine
+FROM golang:1.25-alpine
 
 WORKDIR /app
 
-COPY go.mod ./
-# COPY go.sum ./ 
-# go.sum might not exist yet if we haven't run go mod tidy successfully
-# But typically we should. For now, let's assume we might need to generate it.
-# If the user didn't run go get, go.sum is missing.
-# We can run go mod download which might fail if go.sum is missing but go.mod has deps.
-# Actually, let's just copy everything and build.
+COPY go.mod go.sum ./
+RUN go mod download
 
 COPY . .
 
