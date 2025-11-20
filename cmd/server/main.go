@@ -52,5 +52,10 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+	// Add this: Redirect root URL to the overlay
+	r.GET("/", func(c *gin.Context) {
+		c.Redirect(301, "/overlay/index.html")
+	})
+
 	r.Run(":" + port)
 }
